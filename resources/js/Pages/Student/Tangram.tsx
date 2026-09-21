@@ -19,18 +19,25 @@ const CLIP_PATHS: Record<PieceShape, string> = {
     medium: 'polygon(0% 0%, 100% 0%, 0% 100%)',
     small: 'polygon(0% 0%, 100% 0%, 0% 100%)',
     square: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)',
-    parallelogram: 'polygon(25% 0%, 100% 0%, 75% 100%, 0% 100%)',
+    // slant is exactly 45°: horizontal offset between the parallel edges equals the piece height
+    parallelogram: 'polygon(33.333% 0%, 100% 0%, 66.667% 100%, 0% 100%)',
 };
+
+// All sizes derive from one unit (the small triangle's leg = 65px), matching the
+// classic tangram proportions: large leg = 2×unit, medium leg = √2×unit, square
+// side = unit, parallelogram short side = unit at a true 45° angle.
+const UNIT = 65;
 
 function initialPieces(): Piece[] {
     return [
-        { id: 'lg1', shape: 'large', color: '#f87171', size: 130, x: 20, y: 20, rotation: 0 },
-        { id: 'lg2', shape: 'large', color: '#fb923c', size: 130, x: 170, y: 20, rotation: 90 },
-        { id: 'md1', shape: 'medium', color: '#facc15', size: 92, x: 20, y: 180, rotation: 0 },
-        { id: 'sm1', shape: 'small', color: '#4ade80', size: 65, x: 140, y: 190, rotation: 0 },
-        { id: 'sm2', shape: 'small', color: '#22d3ee', size: 65, x: 220, y: 190, rotation: 180 },
-        { id: 'sq1', shape: 'square', color: '#818cf8', size: 62, x: 300, y: 20, rotation: 0 },
-        { id: 'pg1', shape: 'parallelogram', color: '#e879f9', size: 100, x: 290, y: 180, rotation: 0 },
+        { id: 'lg1', shape: 'large', color: '#f87171', size: UNIT * 2, x: 20, y: 20, rotation: 0 },
+        { id: 'lg2', shape: 'large', color: '#fb923c', size: UNIT * 2, x: 170, y: 20, rotation: 90 },
+        { id: 'md1', shape: 'medium', color: '#facc15', size: UNIT * Math.SQRT2, x: 20, y: 190, rotation: 0 },
+        { id: 'sm1', shape: 'small', color: '#4ade80', size: UNIT, x: 140, y: 200, rotation: 0 },
+        { id: 'sm2', shape: 'small', color: '#22d3ee', size: UNIT, x: 220, y: 200, rotation: 180 },
+        { id: 'sq1', shape: 'square', color: '#818cf8', size: UNIT, x: 300, y: 20, rotation: 0 },
+        // size here is the piece's height; the parallelogram's width is 3× that (see render below)
+        { id: 'pg1', shape: 'parallelogram', color: '#e879f9', size: UNIT / Math.SQRT2, x: 290, y: 200, rotation: 0 },
     ];
 }
 
@@ -79,15 +86,15 @@ export default function Tangram({
         const { id, offsetX, offsetY } = dragState.current;
 
         setPieces((prev) =>
-            prev.map((p) =>
-                p.id === id
-                    ? {
-                          ...p,
-                          x: Math.max(0, Math.min(board.width - p.size, e.clientX - board.left - offsetX)),
-                          y: Math.max(0, Math.min(board.height - p.size, e.clientY - board.top - offsetY)),
-                      }
-                    : p,
-            ),
+            prev.map((p) => {
+                if (p.id !== id) return p;
+                const width = p.shape === 'parallelogram' ? p.size * 3 : p.size;
+                return {
+                    ...p,
+                    x: Math.max(0, Math.min(board.width - width, e.clientX - board.left - offsetX)),
+                    y: Math.max(0, Math.min(board.height - p.size, e.clientY - board.top - offsetY)),
+                };
+            }),
         );
     }
 
@@ -194,8 +201,8 @@ export default function Tangram({
                                 style={{
                                     left: piece.x,
                                     top: piece.y,
-                                    width: piece.size,
-                                    height: piece.shape === 'parallelogram' ? piece.size * 0.6 : piece.size,
+                                    width: piece.shape === 'parallelogram' ? piece.size * 3 : piece.size,
+                                    height: piece.size,
                                     backgroundColor: piece.color,
                                     clipPath: CLIP_PATHS[piece.shape],
                                     transform: `rotate(${piece.rotation}deg)`,

@@ -41,6 +41,7 @@ export default function Hanoi({
     const [hypothesis, setHypothesis] = useState('');
     const [prediction, setPrediction] = useState('');
     const [saved, setSaved] = useState(false);
+    const [invalidTower, setInvalidTower] = useState<number | null>(null);
 
     useEffect(() => {
         if (!startedAt || completed) return;
@@ -63,13 +64,24 @@ export default function Hanoi({
         setHypothesis('');
         setPrediction('');
         setSaved(false);
+        setInvalidTower(null);
+    }
+
+    function flashInvalid(index: number) {
+        setInvalidTower(index);
+        setSelected(null);
+        setTimeout(() => setInvalidTower(null), 400);
     }
 
     function handleTowerClick(index: number) {
         if (completed) return;
 
         if (selected === null) {
-            if (towers[index].length > 0) setSelected(index);
+            if (towers[index].length > 0) {
+                setSelected(index);
+            } else {
+                flashInvalid(index);
+            }
             return;
         }
 
@@ -84,7 +96,7 @@ export default function Hanoi({
         const destTop = destTower[destTower.length - 1];
 
         if (destTop !== undefined && destTop < disc) {
-            setSelected(null);
+            flashInvalid(index);
             return;
         }
 
@@ -165,23 +177,40 @@ export default function Hanoi({
                 </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 gap-6">
+            {!completed && (
+                <p className="mt-6 text-sm text-gray-500">
+                    {selected === null
+                        ? 'Clique em uma torre para pegar o disco do topo.'
+                        : 'Agora clique na torre de destino.'}
+                </p>
+            )}
+
+            <div className="mt-3 grid grid-cols-3 gap-6">
                 {towers.map((tower, index) => (
                     <button
                         key={index}
                         onClick={() => handleTowerClick(index)}
-                        className={`flex h-64 flex-col-reverse items-center rounded-lg border-2 p-2 transition ${
-                            selected === index
-                                ? 'border-indigo-500 bg-indigo-50'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
+                        className={`group relative flex h-64 cursor-pointer flex-col-reverse items-center justify-start rounded-lg border-2 bg-white p-2 pb-4 transition ${
+                            invalidTower === index
+                                ? 'animate-pulse border-red-400 bg-red-50'
+                                : selected === index
+                                  ? 'border-indigo-500 bg-indigo-50'
+                                  : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
                         }`}
                     >
+                        {/* haste central */}
+                        <div className="pointer-events-none absolute bottom-4 left-1/2 h-[calc(100%-2rem)] w-2 -translate-x-1/2 rounded-t bg-gray-300" />
+                        {/* base */}
+                        <div className="pointer-events-none absolute bottom-2 left-1/2 h-2 w-40 -translate-x-1/2 rounded bg-gray-400" />
+
                         {tower.map((disc, i) => (
                             <div
                                 key={i}
-                                className={`mb-1 h-6 rounded ${DISC_COLORS[(disc - 1) % DISC_COLORS.length]}`}
-                                style={{ width: `${40 + disc * 24}px` }}
-                            />
+                                className={`relative z-10 mb-1 flex h-7 items-center justify-center rounded text-xs font-semibold text-white/90 shadow ${DISC_COLORS[(disc - 1) % DISC_COLORS.length]}`}
+                                style={{ width: `${44 + disc * 26}px` }}
+                            >
+                                {disc}
+                            </div>
                         ))}
                     </button>
                 ))}
